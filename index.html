@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEEP STRIKE — Submarine Combat</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./node_modules/three/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game" aria-label="Game view"></canvas>
+  <div id="vignette"></div>
+  <div id="dmgflash"></div>
+
+  <div id="hud" class="hidden">
+    <div id="topleft" class="panel">
+      <div class="lbl">SCORE</div>
+      <div id="score">0</div>
+      <div id="combo"></div>
+      <div class="lbl">WAVE <span id="wave">1</span> · HOSTILES <span id="hostiles">0</span></div>
+      <div id="status" class="ok">UNDETECTED</div>
+    </div>
+
+    <div id="compass"><span id="heading">000°</span></div>
+    <div id="feed" aria-live="polite"></div>
+    <div id="banner" aria-live="assertive"><h2 id="bannerTitle"></h2><p id="bannerSub"></p></div>
+    <div id="warning">⚠ TORPEDO INCOMING <span id="warnDist"></span> ⚠</div>
+    <div id="chargeWarn">▼ DEPTH CHARGES ▼</div>
+    <div id="edgeWarn">⚠ LEAVING OPERATIONS AREA ⚠</div>
+
+    <div id="crosshair"></div>
+    <div id="lock"><span id="lockinfo"></span></div>
+    <div id="markers"></div>
+    <div id="popups"></div>
+
+    <div id="bottomleft" class="panel">
+      <div class="row"><span class="lbl">HULL</span><div class="bar"><div id="hullbar" class="fill"></div></div><span id="hulltxt">100</span></div>
+      <div class="row"><span class="lbl">BOOST</span><div class="bar"><div id="boostbar" class="fill amber"></div></div></div>
+      <div class="row"><span class="lbl">NOISE</span><div class="bar"><div id="noisebar" class="fill"></div></div><span id="noisetxt">QUIET</span></div>
+      <div class="row"><span class="lbl">THROT</span><div class="bar throttle"><div id="throtmark"></div><div class="zero"></div></div><span id="speed">0 kn</span></div>
+      <div class="row readout"><span>DEPTH <b id="depth">60</b>m</span><span>KEEL <b id="keel">0</b>m</span></div>
+    </div>
+
+    <div id="weapons" class="panel">
+      <div class="wpn"><span class="lbl">TORPEDOES</span><b id="torps">12</b><div class="bar small"><div id="tubebar" class="fill"></div></div><span class="key">SPACE / LMB</span></div>
+      <div class="wpn"><span class="lbl">DECOYS</span><b id="decoys">3</b><div class="bar small"><div id="decoybar" class="fill amber"></div></div><span class="key">Q</span></div>
+      <div class="wpn"><span class="lbl">ACTIVE SONAR</span><b id="pingtxt">READY</b><div class="bar small"><div id="pingbar" class="fill"></div></div><span class="key">E</span></div>
+    </div>
+
+    <canvas id="radar" width="230" height="230" aria-label="Sonar display"></canvas>
+  </div>
+
+  <div id="menu" class="overlay">
+    <div class="card">
+      <h1>DEEP STRIKE</h1>
+      <p class="tag">Submarine combat in the silent deep</p>
+      <div class="controls">
+        <div><kbd>W</kbd>/<kbd>S</kbd> Throttle</div>
+        <div><kbd>A</kbd>/<kbd>D</kbd> Turn</div>
+        <div><kbd>R</kbd>/<kbd>F</kbd> or <kbd>↑</kbd>/<kbd>↓</kbd> Rise / Dive</div>
+        <div><kbd>Shift</kbd> Flank boost (loud!)</div>
+        <div><kbd>Space</kbd>/<kbd>LMB</kbd> Fire torpedo</div>
+        <div><kbd>Tab</kbd> Cycle target lock</div>
+        <div><kbd>Q</kbd> Launch decoy</div>
+        <div><kbd>E</kbd> Active sonar ping</div>
+        <div><kbd>X</kbd> All stop</div>
+        <div><kbd>RMB</kbd> drag Look · <kbd>Wheel</kbd> Zoom</div>
+        <div><kbd>P</kbd>/<kbd>Esc</kbd> Pause · <kbd>M</kbd> Mute</div>
+      </div>
+      <ul class="tips">
+        <li>Speed makes noise. Creep slowly and the enemy won't hear you coming.</li>
+        <li>Enemy torpedoes are faster than you at cruise — out-turn them, boost away, or drop a decoy.</li>
+        <li>Destroyers ping and drop depth charges. Watch the surface, change depth fast.</li>
+        <li>Chain kills quickly for a score multiplier. Lure enemies into each other's fire.</li>
+      </ul>
+      <button id="startBtn" type="button">DIVE! <small>(Enter)</small></button>
+      <p class="hi">HIGH SCORE: <span id="hiscore">0</span></p>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="card small">
+      <h1>PAUSED</h1>
+      <button id="resumeBtn" type="button">RESUME <small>(P)</small></button>
+    </div>
+  </div>
+
+  <div id="gameover" class="overlay hidden">
+    <div class="card">
+      <h1 class="red">HULL BREACHED</h1>
+      <p class="tag" id="goSub">Your boat is lost.</p>
+      <div id="goStats"></div>
+      <button id="restartBtn" type="button">DIVE AGAIN <small>(Enter)</small></button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

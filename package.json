@@ -1,0 +1,13 @@
+{
+  "name": "deep-strike",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DEEP STRIKE - locally hosted three.js submarine combat game",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  }
+}
