@@ -5,7 +5,8 @@
   "description": "DEEP STRIKE - locally hosted three.js submarine combat game",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "vendor": "mkdir -p vendor/three && cp node_modules/three/build/three.module.js node_modules/three/build/three.core.js node_modules/three/LICENSE vendor/three/"
   },
   "dependencies": {
     "three": "0.187.0"

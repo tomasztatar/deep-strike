@@ -1,5 +1,5 @@
 // Minimal static file server for DEEP STRIKE.
-// Serves only the game files and the three.js build directory.
+// Serves only the game files and the vendored three.js build.
 // Binds to 127.0.0.1 by default (local only). Override with HOST / PORT env vars.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -21,7 +21,7 @@ const TYPES = {
 };
 
 // Whitelist of path prefixes that may be served.
-const ALLOWED = ['/index.html', '/style.css', '/src/', '/node_modules/three/build/'];
+const ALLOWED = ['/index.html', '/style.css', '/src/', '/vendor/'];
 
 const server = http.createServer((req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
