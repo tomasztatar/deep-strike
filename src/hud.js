@@ -81,6 +81,33 @@ export class HUD {
     return { x: (_p.x * 0.5 + 0.5) * innerWidth, y: (-_p.y * 0.5 + 0.5) * innerHeight };
   }
 
+  /** Parts shared by both game modes: banner, damage flash, floating popups. */
+  updateCommon(dt) {
+    const P = G.player, el = this.el;
+    const hp = P.hp / P.maxHp;
+    if (this.bannerT > 0) {
+      this.bannerT -= dt;
+      if (this.bannerT <= 0) el.banner.classList.remove('show');
+    }
+    this.flash = Math.max(0, this.flash - dt * 1.6);
+    el.dmgflash.style.opacity = String(Math.max(this.flash, hp < 0.3 && P.alive ? 0.25 + 0.2 * Math.sin(G.time * 6) : 0));
+    // Score popups
+    for (let i = this.pops.length - 1; i >= 0; i--) {
+      const p = this.pops[i];
+      p.t += dt;
+      p.pos.y += dt * 4;
+      const sp = this.project(p.pos);
+      if (sp) {
+        p.d.style.left = `${sp.x}px`;
+        p.d.style.top = `${sp.y - p.t * 30}px`;
+        p.d.style.display = 'block';
+      } else p.d.style.display = 'none';
+      p.d.style.opacity = String(Math.max(0, 1 - Math.max(0, p.t - 0.8) / 0.6));
+      if (p.t > 1.4) { p.d.remove(); this.pops.splice(i, 1); }
+    }
+
+  }
+
   update(dt) {
     const P = G.player;
     const el = this.el;
@@ -128,13 +155,6 @@ export class HUD {
     el.chargeWarn.style.display = chargeNear && P.alive ? 'block' : 'none';
     el.edgeWarn.style.display = P.outside && P.alive ? 'block' : 'none';
 
-    // Banner / flashes
-    if (this.bannerT > 0) {
-      this.bannerT -= dt;
-      if (this.bannerT <= 0) el.banner.classList.remove('show');
-    }
-    this.flash = Math.max(0, this.flash - dt * 1.6);
-    el.dmgflash.style.opacity = String(Math.max(this.flash, hp < 0.3 && P.alive ? 0.25 + 0.2 * Math.sin(G.time * 6) : 0));
     this.hitT -= dt;
     el.crosshair.classList.toggle('hit', this.hitT > 0);
 
@@ -175,21 +195,7 @@ export class HUD {
     }
     for (; mi < this.markerPool.length; mi++) this.markerPool[mi].style.display = 'none';
 
-    // Score popups
-    for (let i = this.pops.length - 1; i >= 0; i--) {
-      const p = this.pops[i];
-      p.t += dt;
-      p.pos.y += dt * 4;
-      const sp = this.project(p.pos);
-      if (sp) {
-        p.d.style.left = `${sp.x}px`;
-        p.d.style.top = `${sp.y - p.t * 30}px`;
-        p.d.style.display = 'block';
-      } else p.d.style.display = 'none';
-      p.d.style.opacity = String(Math.max(0, 1 - Math.max(0, p.t - 0.8) / 0.6));
-      if (p.t > 1.4) { p.d.remove(); this.pops.splice(i, 1); }
-    }
-
+    this.updateCommon(dt);
     this.drawRadar(dt);
   }
 

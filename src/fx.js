@@ -28,6 +28,16 @@ void main() {
   gl_FragColor = vec4(uColor + hl, (rim + hl * 0.8) * vAlpha);
 }`;
 
+const FRAG_SOFT = /* glsl */ `
+uniform vec3 uColor;
+varying float vAlpha;
+void main() {
+  float d = length(gl_PointCoord - 0.5);
+  if (d > 0.5) discard;
+  float a = pow(1.0 - d * 2.0, 1.5) * vAlpha;
+  gl_FragColor = vec4(uColor, a);
+}`;
+
 const FRAG_GLOW = /* glsl */ `
 uniform vec3 uColor;
 varying float vAlpha;
@@ -39,8 +49,9 @@ void main() {
 }`;
 
 export class Particles {
-  constructor(scene, { max = 3000, color = 0xd8f4ff, additive = false, buoyancy = 5, drag = 1.2, wobble = 1 } = {}) {
+  constructor(scene, { max = 3000, color = 0xd8f4ff, additive = false, soft = false, clamp = true, grow = 1, opacity = 1, buoyancy = 5, drag = 1.2, wobble = 1 } = {}) {
     this.max = max; this.buoyancy = buoyancy; this.drag = drag; this.additive = additive; this.wobble = wobble;
+    this.soft = soft; this.clamp = clamp; this.grow = grow; this.opacity = opacity;
     this.pos = new Float32Array(max * 3);
     this.vel = new Float32Array(max * 3);
     this.life = new Float32Array(max);
@@ -59,7 +70,7 @@ export class Particles {
     this.mat = new THREE.ShaderMaterial({
       uniforms: { uColor: { value: new THREE.Color(color) }, uScale: { value: 600 }, uFogDensity: { value: 0.005 } },
       vertexShader: VERT,
-      fragmentShader: additive ? FRAG_GLOW : FRAG_BUBBLE,
+      fragmentShader: additive ? FRAG_GLOW : soft ? FRAG_SOFT : FRAG_BUBBLE,
       transparent: true,
       depthWrite: false,
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
@@ -95,8 +106,11 @@ export class Particles {
       this.pos[j] += this.vel[j] * dt + w;
       this.pos[j + 1] += this.vel[j + 1] * dt;
       this.pos[j + 2] += this.vel[j + 2] * dt + w;
-      if (this.pos[j + 1] > -0.3) { this.pos[j + 1] = -0.3; this.life[i] = Math.min(this.life[i], 0.1); }
-      if (this.additive) {
+      if (this.clamp && this.pos[j + 1] > -0.3) { this.pos[j + 1] = -0.3; this.life[i] = Math.min(this.life[i], 0.1); }
+      if (this.soft) {
+        this.alpha[i] = Math.min(1, (1 - k) * 6) * k * this.opacity;
+        this.size[i] = this.size0[i] * (1 + (1 - k) * this.grow);
+      } else if (this.additive) {
         this.alpha[i] = k;
         this.size[i] = this.size0[i] * (0.5 + (1 - k) * 0.9);
       } else {
@@ -114,7 +128,12 @@ export class FX {
   constructor(scene) {
     this.scene = scene;
     this.bubbles = new Particles(scene, { max: 4500 });
-    this.sparks = new Particles(scene, { max: 1500, color: 0xffa040, additive: true, buoyancy: 1.5, drag: 2.8, wobble: 0 });
+    this.sparks = new Particles(scene, { max: 1800, color: 0xffa040, additive: true, clamp: false, buoyancy: 1.5, drag: 2.8, wobble: 0 });
+    // Above-water systems (used by the WWII mode)
+    this.smoke = new Particles(scene, { max: 2600, color: 0x2a2a2c, soft: true, clamp: false, grow: 3, opacity: 0.55, buoyancy: 2.5, drag: 0.4, wobble: 0.6 });
+    this.spray = new Particles(scene, { max: 2200, color: 0xe8f2f6, soft: true, clamp: false, grow: 1.2, opacity: 0.8, buoyancy: -14, drag: 0.5, wobble: 0 });
+    this.foam = new Particles(scene, { max: 3200, color: 0xdfeef2, soft: true, clamp: false, grow: 1.5, opacity: 0.45, buoyancy: 0, drag: 1.5, wobble: 0 });
+    this.systems = [this.bubbles, this.sparks, this.smoke, this.spray, this.foam];
     this.lights = [];
     for (let i = 0; i < 4; i++) {
       const light = new THREE.PointLight(0xffa860, 0, 220, 1.4);
@@ -127,8 +146,34 @@ export class FX {
   }
 
   setScale(s) {
-    this.bubbles.mat.uniforms.uScale.value = s;
-    this.sparks.mat.uniforms.uScale.value = s;
+    for (const p of this.systems) p.mat.uniforms.uScale.value = s;
+  }
+
+  /** Explosion at or near the sea surface: fireball, water column, smoke. */
+  surfaceExplosion(pos, scale = 1) {
+    this.explosion(pos, scale);
+    this.splash(pos, scale * 1.6);
+    for (let i = 0; i < 40 * scale; i++) {
+      this.smoke.emit(pos.x + rand(-4, 4) * scale, Math.max(1, pos.y) + rand(0, 6) * scale, pos.z + rand(-4, 4) * scale,
+        rand(-2, 2), rand(3, 9), rand(-2, 2), rand(4, 9), rand(5, 11) * scale);
+    }
+  }
+
+  /** Water column / shell splash on the surface. */
+  splash(pos, scale = 1) {
+    const n = Math.floor(45 * scale);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 1.5 * scale;
+      const up = rand(10, 26) * Math.sqrt(scale);
+      this.spray.emit(pos.x + Math.cos(a) * r, 0.5, pos.z + Math.sin(a) * r, Math.cos(a) * rand(1, 4) * scale, up, Math.sin(a) * rand(1, 4) * scale, rand(1.2, 2.4), rand(1.5, 3.5) * scale);
+    }
+    for (let i = 0; i < 10 * scale; i++) this.foam.emit(pos.x + rand(-3, 3) * scale, 0.3, pos.z + rand(-3, 3) * scale, rand(-2, 2), 0, rand(-2, 2), rand(3, 6), rand(3, 6) * scale);
+  }
+
+  /** Small muzzle flash + smoke puff. */
+  muzzle(pos, dir) {
+    for (let i = 0; i < 10; i++) this.sparks.emit(pos.x, pos.y, pos.z, dir.x * rand(10, 30) + rand(-3, 3), dir.y * 10 + rand(-2, 3), dir.z * rand(10, 30) + rand(-3, 3), rand(0.1, 0.25), rand(2, 4));
+    for (let i = 0; i < 5; i++) this.smoke.emit(pos.x, pos.y, pos.z, dir.x * 6 + rand(-1, 1), rand(0, 2), dir.z * 6 + rand(-1, 1), rand(1.5, 3), rand(2, 4));
   }
 
   _shell(pos, color, opacity, from, to, dur, wireframe = false) {
@@ -180,8 +225,10 @@ export class FX {
   update(dt, time, fogDensity) {
     this.bubbles.mat.uniforms.uFogDensity.value = fogDensity;
     this.sparks.mat.uniforms.uFogDensity.value = fogDensity * 0.6;
-    this.bubbles.update(dt, time);
-    this.sparks.update(dt, time);
+    this.smoke.mat.uniforms.uFogDensity.value = fogDensity;
+    this.spray.mat.uniforms.uFogDensity.value = fogDensity;
+    this.foam.mat.uniforms.uFogDensity.value = fogDensity;
+    for (const p of this.systems) p.update(dt, time);
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.t += dt;
@@ -204,6 +251,7 @@ export class FX {
   }
 }
 
+const rand = (a, b) => a + Math.random() * (b - a);
 const _rd = new THREE.Vector3();
 function randDir() {
   const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);

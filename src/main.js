@@ -6,6 +6,7 @@ import { FX } from './fx.js';
 import { SoundSystem } from './audio.js';
 import { HUD } from './hud.js';
 import { Player, EnemySub, Destroyer, Mine, Pickup, pickupKind, Wreck, rand, clamp, volAt, angleWrap } from './entities.js';
+import { WW2, MISSIONS, getBest } from './ww2/mode.js';
 
 // ---------- renderer / scene ----------
 const canvas = document.getElementById('game');
@@ -28,6 +29,8 @@ G.audio = new SoundSystem();
 G.hud = new HUD();
 G.player = new Player();
 G.camDist = 24;
+G.renderer = renderer;
+G.mode = 'arcade';
 
 function onResize() {
   renderer.setSize(innerWidth, innerHeight);
@@ -40,6 +43,7 @@ onResize();
 
 // ---------- input ----------
 const keys = new Set();
+G.keys = keys;
 let firing = false, rmb = false, orbitYaw = 0, orbitPitch = 0;
 const PREVENT = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -47,7 +51,12 @@ addEventListener('keydown', (e) => {
   if (PREVENT.has(e.code)) e.preventDefault();
   keys.add(e.code);
   if (e.repeat) return;
-  if (G.state === 'playing') {
+  const missionsOpen = !ui.missions.classList.contains('hidden');
+  if (missionsOpen && e.code === 'Escape') { showMenu(); return; }
+  if (G.state === 'playing' && G.mode === 'ww2') {
+    if (e.code === 'KeyP' || e.code === 'Escape') setPaused(true);
+    else WW2.keydown(e);
+  } else if (G.state === 'playing') {
     if (e.code === 'Space') G.player.fire();
     if (e.code === 'KeyQ') G.player.dropDecoy();
     if (e.code === 'KeyE') G.player.ping();
@@ -56,7 +65,8 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyP' || e.code === 'Escape') setPaused(true);
   } else if (G.state === 'paused' && (e.code === 'KeyP' || e.code === 'Escape')) setPaused(false);
   if (e.code === 'KeyM') G.audio.setMuted(!G.audio.muted);
-  if (e.code === 'Enter' && (G.state === 'menu' || G.state === 'over')) startGame();
+  if (e.code === 'Enter' && G.state === 'over') restart();
+  else if (e.code === 'Enter' && G.state === 'menu' && !missionsOpen) startGame();
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => {
@@ -65,7 +75,10 @@ addEventListener('blur', () => {
   if (G.state === 'playing') setPaused(true);
 });
 canvas.addEventListener('mousedown', (e) => {
-  if (e.button === 0) { firing = true; if (G.state === 'playing') G.player.fire(); }
+  if (e.button === 0) {
+    if (G.mode === 'ww2') WW2.mouseDown(0);
+    else { firing = true; if (G.state === 'playing') G.player.fire(); }
+  }
   if (e.button === 2) rmb = true;
 });
 addEventListener('mouseup', (e) => {
@@ -74,12 +87,14 @@ addEventListener('mouseup', (e) => {
 });
 addEventListener('mousemove', (e) => {
   if (!rmb) return;
+  if (G.mode === 'ww2') { WW2.mouseDrag(e.movementX, e.movementY); return; }
   orbitYaw -= e.movementX * 0.006;
   orbitPitch = clamp(orbitPitch + e.movementY * 0.004, -0.5, 1.0);
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (G.mode === 'ww2') { WW2.wheel(e.deltaY); return; }
   G.camDist = clamp(G.camDist + Math.sign(e.deltaY) * 3, 12, 60);
 }, { passive: false });
 
@@ -102,13 +117,93 @@ const ui = {
   goStats: document.getElementById('goStats'),
   goSub: document.getElementById('goSub'),
   hiscore: document.getElementById('hiscore'),
+  missions: document.getElementById('missions'),
+  missionList: document.getElementById('missionList'),
+  tdc: document.getElementById('tdcAssist'),
+  goTitle: document.getElementById('goTitle'),
+  restartBtn: document.getElementById('restartBtn'),
 };
 const HI_KEY = 'deepstrike_hiscore';
 const getHi = () => Number(localStorage.getItem(HI_KEY)) || 0;
 ui.hiscore.textContent = getHi().toLocaleString();
 document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', () => restart());
 document.getElementById('resumeBtn').addEventListener('click', () => setPaused(false));
+document.getElementById('ww2Btn').addEventListener('click', showMissions);
+document.getElementById('missionsBack').addEventListener('click', showMenu);
+document.getElementById('overMenuBtn').addEventListener('click', showMenu);
+document.getElementById('pauseMenuBtn').addEventListener('click', showMenu);
+document.getElementById('endPatrolBtn').addEventListener('click', () => { setPaused(false); WW2.endPatrol(); });
+
+let lastMission = null;
+function restart() {
+  if (G.mode === 'ww2' && lastMission) startWW2(lastMission);
+  else startGame();
+}
+
+function showMissions() {
+  G.audio.init();
+  ui.missionList.replaceChildren();
+  for (const m of MISSIONS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const t = document.createElement('b');
+    t.textContent = m.name;
+    const w = document.createElement('span');
+    w.className = 'when';
+    w.textContent = m.when;
+    const d = document.createElement('span');
+    d.textContent = m.desc;
+    const o = document.createElement('span');
+    o.className = 'obj';
+    const best = getBest(m.id);
+    o.textContent = `Objective: ${m.objective.grt ? `${m.objective.grt.toLocaleString()} GRT` : `sink ${m.objective.ships} ships`}${best ? ` · best ${best.toLocaleString()} GRT` : ''}`;
+    b.append(t, w, d, o);
+    b.addEventListener('click', () => startWW2(m.id));
+    ui.missionList.append(b);
+  }
+  ui.menu.classList.add('hidden');
+  ui.missions.classList.remove('hidden');
+  ui.missionList.firstChild.focus();
+}
+
+function startWW2(id) {
+  G.audio.init();
+  if (G.audio.ctx && G.audio.ctx.state === 'suspended') G.audio.ctx.resume();
+  clearEntities();
+  for (const o of [ui.menu, ui.missions, ui.over, ui.pause]) o.classList.add('hidden');
+  lastMission = id;
+  WW2.start(id, { tdcAssist: ui.tdc.checked });
+  last = performance.now();
+  canvas.focus();
+}
+
+function leaveWW2() {
+  if (G.mode !== 'ww2') return;
+  WW2.teardown();
+  G.mode = 'arcade';
+  installArcade();
+  ui.goTitle.textContent = 'HULL BREACHED';
+  ui.goTitle.classList.add('red');
+  ui.restartBtn.firstChild.textContent = 'DIVE AGAIN ';
+}
+
+function showMenu() {
+  leaveWW2();
+  clearEntities();
+  if (G.player && G.player.mesh && G.player.mesh.parent) scene.remove(G.player.mesh);
+  G.player = new Player();
+  G.state = 'menu';
+  G.hud.clear();
+  G.hud.show(false);
+  for (const o of [ui.missions, ui.over, ui.pause]) o.classList.add('hidden');
+  ui.menu.classList.remove('hidden');
+  if (G.audio.ctx && G.audio.ctx.state === 'suspended') G.audio.ctx.resume();
+  G.audio.silenceLoops && G.audio.ctx && G.audio.silenceLoops();
+  camera.fov = 65;
+  camera.updateProjectionMatrix();
+  onResize();
+}
 
 function setPaused(p) {
   if (p && G.state === 'playing') {
@@ -134,6 +229,9 @@ function clearEntities() {
 
 function startGame() {
   G.audio.init();
+  if (G.audio.ctx && G.audio.ctx.state === 'suspended') G.audio.ctx.resume();
+  leaveWW2();
+  ui.missions.classList.add('hidden');
   clearEntities();
   if (G.player && G.player.mesh.parent) scene.remove(G.player.mesh);
   G.player = new Player();
@@ -227,8 +325,10 @@ function waveLogic(dt) {
   }
 }
 
-// ---------- callbacks used by entities ----------
-G.blast = (pos, radius, maxDmg, exclude, src) => {
+// ---------- callbacks used by entities (arcade) ----------
+const ARC = {};
+const installArcade = () => Object.assign(G, ARC);
+ARC.blast = (pos, radius, maxDmg, exclude, src) => {
   const P = G.player;
   if (P.alive && P !== exclude) {
     const d = pos.distanceTo(P.pos);
@@ -241,7 +341,7 @@ G.blast = (pos, radius, maxDmg, exclude, src) => {
   }
 };
 
-G.onEnemyKilled = (e, src) => {
+ARC.onEnemyKilled = (e, src) => {
   if (src === 'self') return; // mine detonated on its own
   G.combo = G.comboTimer > 0 ? Math.min(G.combo + 1, 8) : 1;
   G.comboTimer = 7;
@@ -268,7 +368,7 @@ G.onEnemyKilled = (e, src) => {
   }
 };
 
-G.onDetected = (e) => {
+ARC.onDetected = (e) => {
   if (G.time - (G.detectCueT || 0) > 2.5) {
     G.detectCueT = G.time;
     G.audio.enemyPing(0.5 + 0.5 * volAt(e.pos, 700));
@@ -276,7 +376,7 @@ G.onDetected = (e) => {
   }
 };
 
-G.onEvaded = (t) => {
+ARC.onEvaded = (t) => {
   if (t.evadedCounted) return;
   t.evadedCounted = true;
   G.stats.evaded++;
@@ -284,7 +384,7 @@ G.onEvaded = (t) => {
   G.hud.feed('+40  TORPEDO EVADED', 'good');
 };
 
-G.onPlayerDeath = () => {
+ARC.onPlayerDeath = () => {
   const P = G.player;
   G.state = 'dying';
   G.dyingT = 3.2;
@@ -295,6 +395,8 @@ G.onPlayerDeath = () => {
   G.wrecks.push(new Wreck(P.mesh, false));
   G.hud.banner('HULL BREACHED', '', 3);
 };
+
+installArcade();
 
 function gameOver() {
   G.state = 'over';
@@ -432,6 +534,7 @@ function prune(list) {
 }
 
 function step(dt) {
+  if (G.mode === 'ww2' && (G.state === 'playing' || G.state === 'dying')) { WW2.step(dt); return; }
   const P = G.player;
   const active = G.state === 'playing' || G.state === 'dying';
   if (active) {
@@ -519,4 +622,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Debug/testing hook (harmless in production)
-window.__DEEPSTRIKE__ = { G, startGame, angleWrap };
+window.__DEEPSTRIKE__ = { G, startGame, startWW2, showMenu, WW2, angleWrap };

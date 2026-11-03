@@ -44,6 +44,7 @@ export class SoundSystem {
 
     this._ambient();
     this._engine();
+    this._ww2Loops();
   }
 
   get ready() {
@@ -268,5 +269,168 @@ export class SoundSystem {
     this._env(g.gain, t, 0.01, 0.3, 0.5);
     n.connect(bp).connect(g).connect(this.sfx);
     this._tone('sine', 1900, t, 0.01, 0.08, 0.4, [this.sfx], 2600);
+  }
+
+  // ================= WWII sounds =================
+  _ww2Loops() {
+    const c = this.ctx;
+    // Diesel: low sawtooth, chugging amplitude modulation
+    const d = c.createOscillator();
+    d.type = 'sawtooth';
+    d.frequency.value = 34;
+    const dlp = c.createBiquadFilter();
+    dlp.type = 'lowpass';
+    dlp.frequency.value = 260;
+    this.dieselAM = c.createGain();
+    this.dieselAM.gain.value = 0.6;
+    const chug = c.createOscillator();
+    chug.type = 'square';
+    chug.frequency.value = 6;
+    const chugG = c.createGain();
+    chugG.gain.value = 0.4;
+    chug.connect(chugG).connect(this.dieselAM.gain);
+    this.dieselGain = c.createGain();
+    this.dieselGain.gain.value = 0;
+    d.connect(dlp).connect(this.dieselAM).connect(this.dieselGain).connect(this.master);
+    d.start(); chug.start();
+    this.dieselOsc = d; this.chugOsc = chug;
+    // Electric motor whine
+    const e = c.createOscillator();
+    e.type = 'sine';
+    e.frequency.value = 180;
+    const e2 = c.createOscillator();
+    e2.type = 'triangle';
+    e2.frequency.value = 60;
+    this.elecGain = c.createGain();
+    this.elecGain.gain.value = 0;
+    e.connect(this.elecGain);
+    e2.connect(this.elecGain);
+    this.elecGain.connect(this.master);
+    e.start(); e2.start();
+    this.elecOsc = e;
+    // Hydrophone: enemy screws thrumming
+    const n = c.createBufferSource();
+    n.buffer = this.noiseBuf;
+    n.loop = true;
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 320;
+    bp.Q.value = 1.4;
+    this.screwAM = c.createGain();
+    this.screwAM.gain.value = 0.5;
+    this.screwLfo = c.createOscillator();
+    this.screwLfo.frequency.value = 4;
+    const lg = c.createGain();
+    lg.gain.value = 0.5;
+    this.screwLfo.connect(lg).connect(this.screwAM.gain);
+    this.screwGain = c.createGain();
+    this.screwGain.gain.value = 0;
+    n.connect(bp).connect(this.screwAM).connect(this.screwGain).connect(this.master);
+    n.start(); this.screwLfo.start();
+    // Aircraft engine drone
+    this.planeGain = c.createGain();
+    this.planeGain.gain.value = 0;
+    const plp = c.createBiquadFilter();
+    plp.type = 'lowpass';
+    plp.frequency.value = 600;
+    for (const f of [86, 89.5]) {
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.connect(plp);
+      o.start();
+    }
+    plp.connect(this.planeGain).connect(this.master);
+  }
+
+  /** mode: 'diesel' | 'electric' | null */
+  setDrive(mode, level) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.dieselGain.gain.setTargetAtTime(mode === 'diesel' ? 0.07 + level * 0.12 : 0, t, 0.4);
+    this.dieselOsc.frequency.setTargetAtTime(28 + level * 16, t, 0.5);
+    this.chugOsc.frequency.setTargetAtTime(4 + level * 6, t, 0.5);
+    this.elecGain.gain.setTargetAtTime(mode === 'electric' && level > 0.01 ? 0.004 + level * 0.022 : 0, t, 0.4);
+    this.elecOsc.frequency.setTargetAtTime(140 + level * 220, t, 0.4);
+  }
+
+  setScrews(vol, rate) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.screwGain.gain.setTargetAtTime(Math.min(0.35, vol * 0.35), t, 0.3);
+    this.screwLfo.frequency.setTargetAtTime(Math.max(1, rate), t, 0.5);
+  }
+
+  setPlane(vol) {
+    if (!this.ctx) return;
+    this.planeGain.gain.setTargetAtTime(Math.min(0.2, vol * 0.2), this.ctx.currentTime, 0.3);
+  }
+
+  silenceLoops() {
+    this.setEngine(0, false);
+    this.setDrive(null, 0);
+    this.setScrews(0, 1);
+    this.setPlane(0);
+  }
+
+  klaxon() {
+    if (!this.ready) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 3; i++) this._tone('sawtooth', 260, t + i * 0.55, 0.05, 0.12, 0.4, [this.master], 430);
+  }
+
+  asdic(vol = 1, contact = false) {
+    if (!this.ready || vol < 0.01) return;
+    const t = this.ctx.currentTime;
+    this._tone('sine', 1480, t, 0.004, 0.3 * vol, 0.45, [this.master, this.verb], 1460);
+    if (contact) this._tone('sine', 1480, t + 0.22, 0.004, 0.22 * vol, 0.3, [this.master, this.verb]);
+  }
+
+  gun(vol = 1) {
+    if (!this.ready || vol < 0.01) return;
+    const c = this.ctx, t = c.currentTime;
+    const n = this._noise(t, 0.6);
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(2400, t);
+    lp.frequency.exponentialRampToValueAtTime(120, t + 0.5);
+    const g = c.createGain();
+    this._env(g.gain, t, 0.003, 0.7 * vol, 0.5);
+    n.connect(lp).connect(g);
+    g.connect(this.master);
+    g.connect(this.verb);
+    this._tone('sine', 90, t, 0.003, 0.6 * vol, 0.3, [this.master], 40);
+  }
+
+  flak(vol = 1) {
+    if (!this.ready || vol < 0.01) return;
+    const c = this.ctx, t = c.currentTime;
+    const n = this._noise(t, 0.12);
+    const hp = c.createBiquadFilter();
+    hp.type = 'bandpass';
+    hp.frequency.value = 1200;
+    const g = c.createGain();
+    this._env(g.gain, t, 0.002, 0.35 * vol, 0.09);
+    n.connect(hp).connect(g).connect(this.master);
+  }
+
+  splash(vol = 1) {
+    if (!this.ready || vol < 0.01) return;
+    const c = this.ctx, t = c.currentTime;
+    const n = this._noise(t, 0.9);
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(900, t);
+    bp.frequency.exponentialRampToValueAtTime(300, t + 0.8);
+    const g = c.createGain();
+    this._env(g.gain, t, 0.01, 0.4 * vol, 0.8);
+    n.connect(bp).connect(g).connect(this.sfx);
+  }
+
+  groan(vol = 1) {
+    if (!this.ready || vol < 0.01) return;
+    const t = this.ctx.currentTime;
+    this._tone('sawtooth', 62, t, 0.6, 0.12 * vol, 2.8, [this.sfx], 31);
+    this._tone('square', 140, t + 0.8, 0.2, 0.04 * vol, 1.5, [this.sfx], 90);
   }
 }

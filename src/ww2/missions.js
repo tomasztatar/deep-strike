@@ -1,0 +1,42 @@
+// Mission definitions for the WWII patrol mode.
+export const MISSIONS = [
+  {
+    id: 'night_convoy',
+    name: 'NIGHT CONVOY',
+    when: 'North Atlantic · 02:00 · moonless',
+    env: 'night', profile: 'ocean', radius: 3400,
+    desc: 'A slow eastbound convoy: eight merchants, three escorts. Darkness hides your low silhouette, so you can attack on the surface. Escorts will fire star shells once they know you are there.',
+    objective: { grt: 25000 },
+    convoy: { merchants: 8, cols: 4, escorts: ['destroyer', 'corvette', 'corvette'] },
+    air: null,
+  },
+  {
+    id: 'day_convoy',
+    name: 'CONVOY UNDER AIR COVER',
+    when: 'Western Approaches · 11:00',
+    env: 'day', profile: 'ocean', radius: 3400,
+    desc: 'Six merchants and two escorts, with patrol aircraft overhead. Make the approach submerged, keep the periscope up only briefly, and crash-dive as soon as you sight an aircraft.',
+    objective: { grt: 20000 },
+    convoy: { merchants: 6, cols: 3, escorts: ['destroyer', 'corvette'] },
+    air: { first: 75, period: [110, 160] },
+  },
+  {
+    id: 'harbor',
+    name: 'HARBOUR RAID',
+    when: 'Enemy coast · dusk',
+    env: 'dusk', profile: 'coastal', radius: 2600, center: { x: 300, z: 0 },
+    desc: 'Ships lie at anchor in a defended bay. Patrol boats guard the entrance, a minefield closes the channel (intelligence reports a gap in the middle) and a coastal battery covers the approaches. The water is shallow, so you cannot hide deep.',
+    objective: { ships: 3 },
+    air: { first: 170, period: [180, 260] },
+  },
+  {
+    id: 'patrol',
+    name: 'SHIPPING LANE PATROL',
+    when: 'Mid-Atlantic · 14:00',
+    env: 'day', profile: 'ocean', radius: 3400,
+    desc: 'Free hunting on a busy shipping lane: independent merchants, the occasional escorted ship, an enemy submarine and air patrols. Sink as much as you can, then end the patrol from the pause menu.',
+    objective: { grt: 15000 },
+    endless: true,
+    air: { first: 130, period: [160, 230] },
+  },
+];

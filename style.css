@@ -105,3 +105,93 @@ button small { font-size: 12px; letter-spacing: 1px; opacity: 0.7; }
 @keyframes blink { 50% { opacity: 0.35; } }
 @keyframes feedIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes lockspin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* ---------- menu: mode select ---------- */
+.card.wide { max-width: 1060px; max-height: 94vh; overflow-y: auto; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; text-align: left; }
+.mode { border: 1px solid rgba(126,240,255,0.25); border-radius: 8px; padding: 14px 18px; background: rgba(0,10,18,0.35); display: flex; flex-direction: column; }
+.mode h2 { margin: 0 0 6px; letter-spacing: 6px; color: #fff; }
+.mode .mdesc { margin: 0 0 10px; font-size: 13px; opacity: 0.9; line-height: 1.45; }
+.mode .controls { grid-template-columns: 1fr 1fr; font-size: 13px; }
+.mode .tips { font-size: 12.5px; flex: 1; }
+.mode button { align-self: center; }
+.mode .hi { text-align: center; }
+button.secondary { background: transparent; color: var(--c); border: 1px solid var(--c); box-shadow: none; font-size: 16px; padding: 8px 26px; margin: 8px 6px 0; }
+button.secondary:hover, button.secondary:focus-visible { background: rgba(126,240,255,0.15); color: #fff; }
+.card.small button { display: block; margin: 12px auto 0; }
+.ww2only { display: none !important; }
+body.ww2 .ww2only { display: block !important; }
+.h1s { font-size: 44px !important; }
+.missionlist { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 14px; }
+.missionlist button { text-align: left; font-size: 14px; letter-spacing: 0; padding: 12px 16px; background: rgba(126,240,255,0.08); color: var(--c); border: 1px solid rgba(126,240,255,0.4); box-shadow: none; }
+.missionlist button:hover, .missionlist button:focus-visible { background: rgba(126,240,255,0.2); color: #fff; }
+.missionlist b { display: block; font-size: 18px; letter-spacing: 3px; color: #fff; }
+.missionlist .when { display: block; color: var(--amber); font-size: 12px; margin: 2px 0 6px; letter-spacing: 1px; }
+.missionlist .obj { display: block; margin-top: 6px; font-size: 12px; color: var(--ok); }
+.opt { display: block; font-size: 13px; margin: 4px 0 12px; }
+.ww2c { max-width: 900px; grid-template-columns: 1fr 1fr 1fr; font-size: 12.5px; }
+#goStats .sunklist { grid-column: span 2; font-size: 13px; color: var(--amber); max-width: 640px; text-align: center; }
+
+/* ---------- WWII HUD ---------- */
+body.ww2 #arcadehud { display: none; }
+#ww2hud .panel { position: absolute; }
+#w-top { top: 16px; left: 16px; min-width: 260px; }
+#w-tonnage { font-size: 30px; font-weight: bold; color: #fff; }
+#w-status { margin: 4px 0; font-weight: bold; letter-spacing: 2px; font-size: 13px; }
+#w-status.ok { color: var(--ok); }
+#w-status.warn { color: var(--amber); }
+#w-status.bad { color: var(--warn); animation: blink 0.8s steps(2) infinite; }
+#w-time.amber { color: var(--amber); }
+#w-compass { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-size: 20px; padding: 4px 16px; border: 1px solid rgba(126,240,255,0.3); border-radius: 4px; background: var(--panel); }
+#w-alerts { position: absolute; top: 64%; left: 50%; transform: translateX(-50%); text-align: center; font-weight: bold; letter-spacing: 3px; font-size: 20px; }
+#w-alerts .bad { color: var(--warn); text-shadow: 0 0 10px rgba(255,60,40,0.9); animation: blink 0.6s steps(2) infinite; }
+#w-alerts .amber { color: var(--amber); }
+#w-boat { bottom: 16px; left: 16px; width: 360px; }
+#w-boat .row .lbl { width: 62px; }
+#w-boat b { color: #fff; }
+.tag2 { margin-left: auto; font-size: 11px; padding: 1px 6px; border: 1px solid var(--ok); color: var(--ok); border-radius: 3px; }
+.tag2.loud { border-color: var(--amber); color: var(--amber); }
+#w-damage { color: var(--warn); font-size: 11px; min-height: 13px; }
+#w-gauge { position: absolute; bottom: 16px; left: 390px; width: 16px; height: 230px; border: 1px solid rgba(126,240,255,0.4); background: linear-gradient(#2a6a8a, #04121c 80%, #000); border-radius: 3px; }
+#w-gauge .mk { position: absolute; left: -2px; right: -2px; height: 1px; background: rgba(126,240,255,0.6); }
+#w-gauge .mk span { position: absolute; left: 22px; top: -6px; font-size: 9px; white-space: nowrap; }
+#w-gauge .layer { background: rgba(109,255,158,0.7); }
+#w-gauge .test { background: var(--amber); }
+#w-gauge .crush { background: var(--warn); }
+#w-gauge .mk.crush span, #w-gauge .mk.test span { color: var(--amber); }
+#w-gnow { position: absolute; left: -6px; width: 26px; height: 3px; margin-top: -1px; background: #fff; box-shadow: 0 0 6px #fff; }
+#w-gorder { position: absolute; left: -4px; width: 22px; height: 0; border-top: 2px dashed var(--amber); }
+#w-gfloor { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(140,110,70,0.85); }
+#w-weapons { bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 18px; align-items: flex-end; margin-left: 60px; }
+.wcol { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wcol b { font-size: 20px; color: #fff; }
+.tubes { display: flex; gap: 5px; }
+.tube { position: relative; width: 14px; height: 30px; border: 1px solid rgba(126,240,255,0.5); border-radius: 7px; overflow: hidden; }
+.tube i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--amber); }
+.tube.loaded { border-color: var(--ok); box-shadow: 0 0 6px rgba(109,255,158,0.6); }
+.tube.loaded i { background: var(--ok); }
+#w-tdc { right: 16px; bottom: 262px; width: 300px; font-size: 12px; }
+#w-tgt { color: #fff; font-weight: bold; margin: 4px 0; font-size: 13px; }
+#w-tdc .grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 2px 8px; margin-bottom: 4px; }
+#w-tdc .grid b { color: #fff; }
+#w-hint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-size: 11px; opacity: 0.7; white-space: nowrap; margin-left: 60px; }
+.wmk { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border: 2px solid #e8f0f0; transform: rotate(45deg); }
+.wmk span { position: absolute; left: 16px; top: -2px; transform: rotate(-45deg); transform-origin: left; font-size: 11px; white-space: nowrap; color: #e8f0f0; }
+.wmk.escort { border-color: #ff6a50; } .wmk.escort span { color: #ffb0a0; }
+.wmk.plane { border-color: #ffe25a; border-radius: 50%; } .wmk.plane span { color: #ffe25a; }
+.wmk.boat { border-color: #dc78ff; }
+.wmk.sound { border-style: dashed; opacity: 0.6; }
+.wmk.lock { width: 26px; height: 26px; margin: -13px 0 0 -13px; border-color: var(--warn); box-shadow: 0 0 10px rgba(255,75,58,0.8); }
+.wmk.lock span { color: #fff; font-weight: bold; left: 30px; }
+#w-lead { position: absolute; display: none; transform: translate(-50%, -50%); color: var(--amber); font-size: 18px; text-shadow: 0 0 8px var(--amber); }
+#w-lead span { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+#w-scope { position: fixed; inset: 0; pointer-events: none; }
+#w-scope .mask { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0, rgba(0,0,0,0) 41vmin, rgba(0,0,0,0.6) 42.5vmin, #000 44vmin); }
+#w-scope.bino .mask { background: radial-gradient(ellipse 70vmin 40vmin at 50% 50%, rgba(0,0,0,0) 0, rgba(0,0,0,0) 92%, #000 100%); }
+#w-scope .ret i { position: absolute; background: rgba(10,10,10,0.85); }
+#w-scope .ret .h { left: 50%; width: 82vmin; margin-left: -41vmin; top: 50%; height: 2px; background: repeating-linear-gradient(90deg, rgba(0,0,0,0.85) 0 2px, transparent 2px 4vmin), linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)); }
+#w-scope .ret .v { top: 50%; height: 41vmin; margin-top: -41vmin; left: 50%; width: 2px; }
+#w-scope.bino .ret { display: none; }
+#w-scopetape { position: absolute; top: calc(50% - 39vmin); left: 50%; transform: translateX(-50%); font-size: 18px; color: #e8f4f0; text-shadow: 0 0 4px #000; }
+#w-scopeinfo { position: absolute; top: calc(50% + 44vmin); left: 50%; transform: translateX(-50%); font-size: 12px; opacity: 0.85; white-space: nowrap; }
+body.ww2.scope #w-boat, body.ww2.scope #w-gauge { opacity: 0.85; }
