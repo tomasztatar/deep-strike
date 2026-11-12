@@ -36,6 +36,7 @@ export class UBoat {
     this.tele = 4;
     this.throttle = 0;
     this.orderedDepth = -pos.y;
+    this.trueDepth = -pos.y; // physical depth; pos.y additionally carries the visual wave bob
     this.vz = 0; // vertical speed (m/s, + = deeper)
     this.crash = false;
     this.blowing = false;
@@ -63,7 +64,7 @@ export class UBoat {
     this.diesel = true;
   }
 
-  get depth() { return -this.pos.y; }
+  get depth() { return this.trueDepth; }
   get surfaced() { return this.depth < 4; }
   get submerged() { return this.depth > 8; }
 
@@ -126,8 +127,8 @@ export class UBoat {
     if (this.crash && Math.abs(err) < 3) this.crash = false;
     depth = Math.max(DEPTH.surface, depth);
     if (depth <= DEPTH.surface + 0.01 && this.vz < 0) this.vz = 0;
+    this.trueDepth = depth;
     this.pos.y = -depth;
-    if (this.surfaced) this.pos.y += Math.sin(G.time * 0.9) * 0.25;
 
     // --- movement & terrain ---
     const px = this.pos.x, pz = this.pos.z;
@@ -147,6 +148,7 @@ export class UBoat {
     const ground = heightAt(this.pos.x, this.pos.z);
     if (this.pos.y < ground + 3.5) {
       this.pos.y = ground + 3.5;
+      this.trueDepth = -this.pos.y;
       if (this.vz > 1.5 && this.scrapeCd <= 0) { this.scrapeCd = 1; this.damage(2 + this.vz * 2, 'ground'); }
       this.vz = Math.min(this.vz, 0);
       if (this.orderedDepth > -this.pos.y) this.orderedDepth = -this.pos.y;
@@ -207,6 +209,8 @@ export class UBoat {
     this.noise = this.diesel ? 700 + sp * 25 : 25 + sp * 34 + (this.pumping ? 45 : 0) + (this.crash || this.blowing ? 160 : 0) + Math.abs(this.vz) * 6;
     this.noise += this.noiseSpike;
 
+    // Wave bob is purely visual: it must not feed back into depth keeping
+    this.pos.y = -this.trueDepth + (this.surfaced ? Math.sin(G.time * 0.9) * 0.25 : 0);
     this.visuals(dt);
   }
 
